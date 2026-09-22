@@ -1,0 +1,13 @@
+[Unit]
+Description=Sarge diet bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=%h/sarge
+ExecStart=%h/sarge/.venv/bin/python -m sarge.bot
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target
