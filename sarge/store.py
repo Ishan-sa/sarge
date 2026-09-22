@@ -175,6 +175,28 @@ class Store:
             "entries": count,
         }
 
+    def day_ok(self, day: date) -> bool | None:
+        """True if the day hit both targets (small tolerance), False if missed, None if nothing logged."""
+        from .config import TARGET_KCAL, TARGET_PROTEIN
+        t = self.totals(day)
+        if t["entries"] == 0:
+            return None
+        return t["kcal"] <= TARGET_KCAL + 100 and t["protein"] >= TARGET_PROTEIN - 10
+
+    def first_day(self) -> date | None:
+        row = self.db.execute("SELECT MIN(day) d FROM entries").fetchone()
+        return date.fromisoformat(row["d"]) if row and row["d"] else None
+
+    def streak(self, through: date) -> int:
+        """Consecutive on-target days ending at `through`."""
+        n, d = 0, through
+        while self.day_ok(d):
+            n += 1
+            d -= timedelta(days=1)
+        return n
+
+    # --- remembered foods -------------------------------------------------
+
     def save_food(self, f: dict) -> None:
         with self.db:
             self.db.execute(
