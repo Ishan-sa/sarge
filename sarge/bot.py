@@ -12,6 +12,7 @@ from . import reminders, render
 from .brain import BrainError, ClaudeBrain
 from .config import ROOT, TARGET_KCAL, TARGET_PROTEIN, env, load_env
 from .core import handle_text
+from .sheets import SheetMirror
 from .store import Store, day_of, now
 
 log = logging.getLogger("sarge")
@@ -25,10 +26,20 @@ HELP = (
 
 
 class Sarge:
-    def __init__(self, store: Store, brain: ClaudeBrain):
+    def __init__(self, store: Store, brain: ClaudeBrain, sheet: SheetMirror | None = None):
         self.store = store
         self.brain = brain
+        self.sheet = sheet
         self.lock = asyncio.Lock()  # one message at a time: log order stays sane
+        self._bg: set[asyncio.Task] = set()
+
+    def mirror(self) -> None:
+        """Push today's snapshot to the sheet without delaying the reply."""
+        if self.sheet is None:
+            return
+        task = asyncio.create_task(self.sheet.sync(self.store, day_of(now())))
+        self._bg.add(task)
+        task.add_done_callback(self._bg.discard)
 
     def is_owner(self, update: Update) -> bool:
         owner = self.store.get("owner_id")
@@ -77,6 +88,7 @@ class Sarge:
             await update.message.reply_text("Nothing to undo today.")
             return
         self.store.delete_entry(entry_id)
+        self.mirror()
         await update.message.reply_text(f"🗑 <b>Deleted your last entry</b>\n{render.left_line(self.store.totals(day))}")
 
     async def foods(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
@@ -100,6 +112,7 @@ class Sarge:
                 log.warning("brain failed: %s", e)
                 reply = "⚠️ Brain failed on that one. Nothing logged. Send it again."
         await update.message.reply_text(reply)
+        self.mirror()
 
     async def tick(self, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         chat_id = self.store.get("chat_id")
@@ -129,7 +142,9 @@ def main() -> None:
     if owner_id:  # private chat id == user id
         store.set("owner_id", owner_id)
         store.set("chat_id", owner_id)
-    sarge = Sarge(store, ClaudeBrain(env("CLAUDE_BIN"), env("CLAUDE_MODEL", "sonnet")))
+    sheet_url = os.environ.get("SHEET_WEBHOOK_URL")
+    sheet = SheetMirror(sheet_url, env("SHEET_SECRET")) if sheet_url else None
+    sarge = Sarge(store, ClaudeBrain(env("CLAUDE_BIN"), env("CLAUDE_MODEL", "sonnet")), sheet)
 
     app = Application.builder().token(env("TELEGRAM_TOKEN")).defaults(Defaults(parse_mode=ParseMode.HTML)).build()
     app.add_handler(CommandHandler(["start", "help"], sarge.start))
