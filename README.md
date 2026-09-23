@@ -1,6 +1,39 @@
-# Sarge
+<p align="center">
+  <img src="docs/assets/banner.jpg" alt="Sarge: the diet coach that yells at you on Telegram" width="100%">
+</p>
 
-**A diet coach that yells at you on Telegram.** You text it what you ate in plain English. It works out the calories and protein, tells you what's left for the day, and nags you when you skip meals. Claude reads your messages. Python does all the math.
+<p align="center">
+  <img src="https://img.shields.io/badge/python-3.11%2B-FF5A1F?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.11+">
+  <img src="https://img.shields.io/badge/telegram-bot-FFB21A?style=for-the-badge&logo=telegram&logoColor=black" alt="Telegram bot">
+  <img src="https://img.shields.io/badge/brain-Claude%20Code-D97757?style=for-the-badge&logo=anthropic&logoColor=white" alt="Claude Code">
+  <img src="https://img.shields.io/badge/cost-%240%2Fmonth-3DDC84?style=for-the-badge" alt="$0/month">
+  <img src="https://img.shields.io/badge/license-MIT-F4F1EA?style=for-the-badge" alt="MIT license">
+</p>
+
+<p align="center">
+  <b>You text it what you ate, in plain English.</b> It works out the calories and protein, tells you what's left for the day, and nags you when you skip meals.<br>
+  Claude reads your messages. Python does all the math. No sympathy included.
+</p>
+
+<p align="center">
+  <a href="docs/demo.mp4"><img src="docs/assets/demo-poster.jpg" alt="Watch the 25-second demo" width="820"></a><br>
+  <sub>▶ <a href="docs/demo.mp4"><b>Watch the 25-second demo</b></a> (sound on 🔊)</sub>
+</p>
+
+<table>
+  <tr>
+    <td width="33%"><img src="docs/assets/shot-chat.jpg" alt="Logging a meal"></td>
+    <td width="33%"><img src="docs/assets/shot-reminders.jpg" alt="Scheduled reminders"></td>
+    <td width="33%"><img src="docs/assets/shot-how.jpg" alt="How it works"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>🍗 Log in plain English</b><br><sub>Exact calories and protein, plus what's left</sub></td>
+    <td align="center"><b>⏰ It doesn't wait for you</b><br><sub>Morning kick-off, meal nudges, a night review</sub></td>
+    <td align="center"><b>🧠 Claude reads, 🐍 Python counts</b><br><sub>Self-hosted on your Claude subscription</sub></td>
+  </tr>
+</table>
+
+## 💬 What a reply looks like
 
 ```
 you    › chicken burrito bowl, 150g chicken, 150g rice, black beans, salsa
@@ -21,7 +54,7 @@ sarge  › ✅ Logged burrito bowl: 569 cal · 58g protein
          ⏭ Next: Snack — protein shake + a banana
 ```
 
-## What it does
+## ✨ What it does
 
 - **Logs food from plain English.** "Chicken rice bowl, 150g chicken, 5g oil", "a handful of almonds", "that rice was 200g actually". Mixed dishes get split into their parts, and fixes edit the right item.
 - **Remembers your foods.** Give it a label once ("Chobani 0% Greek yogurt, 170g: 90 cal, 16g protein…") and it uses those exact numbers from then on.
@@ -35,7 +68,7 @@ sarge  › ✅ Logged burrito bowl: 569 cal · 58g protein
 - **Can copy your log to a Google Sheet**: a Daily tab with one row per day, and a Log tab with every item.
 - **Costs nothing to run.** The "brain" is [Claude Code](https://docs.anthropic.com/en/docs/claude-code) in headless mode, signed in with your existing Claude subscription. No API key, no paid servers. It runs on any always-on machine: a home server, a Raspberry Pi 5, an old laptop.
 
-## How it works
+## ⚙️ How it works
 
 ```mermaid
 flowchart LR
@@ -57,7 +90,7 @@ The work is split so the numbers are always right:
 
 A "day" ends at 4am, so a midnight snack counts toward the day you ate it.
 
-## Setup
+## 🚀 Setup
 
 What you need:
 
@@ -153,7 +186,7 @@ The unit file assumes the code lives in `~/sarge`. If you put it somewhere else,
 
 The sync sends a full copy of the day every time, so a failed push is fixed by the next one. If the sheet is down, logging still works.
 
-## Using it
+## 🗣 Using it
 
 | You send | Sarge does |
 |---|---|
@@ -167,7 +200,7 @@ The sync sends a full copy of the day every time, so a failed push is fixed by t
 | `/undo` | Deletes the last entry |
 | `/foods` | The foods it remembers |
 
-### Schedule
+### ⏰ Schedule
 
 All times are in `SARGE_TZ`. You can change them in `sarge/config.py`.
 
@@ -180,7 +213,7 @@ All times are in `SARGE_TZ`. You can change them in `sarge/config.py`.
 
 Claude writes each reminder in the trainer voice, and Python adds the exact numbers below it. If Claude fails, a built-in template is sent instead, so reminders always go out. Reminders survive restarts, and a missed night review is sent when the bot comes back up.
 
-## Development
+## 🧪 Development
 
 ```bash
 .venv/bin/pip install pytest
@@ -188,6 +221,8 @@ Claude writes each reminder in the trainer voice, and Python adds the exact numb
 ```
 
 The tests use a fake brain and never call Claude.
+
+The demo video's source is in [`demo/`](demo). It's made with Remotion, with a soundtrack synthesized in numpy.
 
 ```
 sarge/
@@ -205,14 +240,14 @@ deploy/
   sheet.gs      Apps Script web app for the sheet mirror
 ```
 
-## Troubleshooting
+## 🩺 Troubleshooting
 
 - **The bot doesn't answer.** Run `journalctl --user -u sarge -f`. A line like `ignoring update from user X (owner is Y)` means `OWNER_ID` is wrong.
 - **"⚠️ Brain failed".** Run `$CLAUDE_BIN -p hi` as the same user the service runs as. You may need to sign in again. Each call times out after 90 s.
 - **`claude: command not found` over SSH.** Non-login shells often don't have `~/.local/bin` on `PATH`. That's why `CLAUDE_BIN` is an absolute path.
 - **The sheet doesn't update.** Look for `sheet sync failed` in the logs. After you edit `sheet.gs`, deploy a new version: Deploy → Manage deployments → Edit → New version.
 
-## Privacy
+## 🔒 Privacy
 
 Everything stays on your machine (SQLite in `data/`), except:
 - your messages, which go to Claude through your own Claude Code login
@@ -220,6 +255,6 @@ Everything stays on your machine (SQLite in `data/`), except:
 
 `.env` and `data/` are gitignored.
 
-## License
+## 📄 License
 
 [MIT](LICENSE)
