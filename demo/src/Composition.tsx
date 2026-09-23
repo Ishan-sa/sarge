@@ -9,7 +9,7 @@ export const SCENES = [
   { from: 240, dur: 210, C: ChatDemo },
   { from: 450, dur: 120, C: Reminders },
   { from: 570, dur: 90, C: HowItWorks },
-  { from: 660, dur: 90, C: EndCard },
+  { from: 660, dur: 135, C: EndCard },
 ];
 
 export const SargeDemo: React.FC = () => (
@@ -56,7 +56,7 @@ export const Banner: React.FC = () => (
 
 export const MyComposition = () => (
   <>
-    <Composition id="SargeDemo" component={SargeDemo} durationInFrames={750} fps={30} width={1920} height={1080} />
+    <Composition id="SargeDemo" component={SargeDemo} durationInFrames={795} fps={30} width={1920} height={1080} />
     <Composition id="Banner" component={Banner} durationInFrames={1} fps={30} width={1800} height={600} />
   </>
 );

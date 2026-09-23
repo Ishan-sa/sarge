@@ -572,6 +572,7 @@ export const Reminders: React.FC = () => {
 };
 
 /* ---------------- 5. How it works (90f) ---------------- */
+export const ZERO = 48; // "$0/MONTH" lands
 const NODES = [
   { icon: "💬", t: "Telegram", s: "you text it" },
   { icon: "🧠", t: "Claude Code", s: "reads it" },
@@ -582,14 +583,14 @@ export const NODE_AT = (i: number) => 6 + i * 8;
 
 export const HowItWorks: React.FC = () => {
   const f = useCurrentFrame();
-  const sh = shake(f, 60, 16, "zero");
+  const sh = shake(f, ZERO, 16, "zero");
   return (
     <AbsoluteFill style={{ backgroundColor: C.bg }}>
       <Backdrop glow="rgba(255,90,31,0.12)" glowY={40} />
       <div
         style={{
           position: "absolute",
-          top: 130,
+          top: 110,
           width: "100%",
           textAlign: "center",
           fontFamily: display,
@@ -601,7 +602,7 @@ export const HowItWorks: React.FC = () => {
       >
         CLAUDE <span style={{ color: C.orange }}>READS.</span> PYTHON <span style={{ color: C.amber }}>COUNTS.</span>
       </div>
-      <div style={{ position: "absolute", top: 420, left: 120, right: 120, display: "flex", justifyContent: "space-between" }}>
+      <div style={{ position: "absolute", top: 390, left: 120, right: 120, display: "flex", justifyContent: "space-between" }}>
         {NODES.map((n, i) => (
           <React.Fragment key={n.t}>
             <div
@@ -658,40 +659,50 @@ export const HowItWorks: React.FC = () => {
       <div
         style={{
           position: "absolute",
-          top: 760,
+          top: 745,
           width: "100%",
           display: "flex",
-          justifyContent: "center",
-          alignItems: "baseline",
-          gap: 34,
+          flexDirection: "column",
+          alignItems: "center",
           translate: `${sh.x}px ${sh.y}px`,
-          opacity: ip(f, [60, 63], [0, 1]),
         }}
       >
         <div
           style={{
             fontFamily: display,
             fontSize: 170,
+            lineHeight: 1,
             color: C.green,
-            scale: ip(f, [60, 67], [1.6, 1], Easing.out(Easing.back(1.5))),
+            opacity: ip(f, [ZERO, ZERO + 3], [0, 1]),
+            scale: ip(f, [ZERO, ZERO + 9], [1.5, 1], Easing.out(Easing.back(1.5))),
             textShadow: "0 0 80px rgba(61,220,132,0.35)",
           }}
         >
           $0/MONTH
         </div>
-        <div style={{ fontFamily: ui, fontSize: 38, color: C.muted, maxWidth: 640, lineHeight: 1.3 }}>
+        <div
+          style={{
+            marginTop: 22,
+            fontFamily: ui,
+            fontSize: 38,
+            color: C.muted,
+            textAlign: "center",
+            opacity: ip(f, [ZERO + 6, ZERO + 16], [0, 1]),
+            translate: `0 ${ip(f, [ZERO + 6, ZERO + 18], [20, 0])}px`,
+          }}
+        >
           Runs on your own box with your Claude subscription. No API key.
         </div>
       </div>
-      <Flash at={60} strength={0.22} color={C.green} />
+      <Flash at={ZERO} strength={0.22} color={C.green} />
     </AbsoluteFill>
   );
 };
 
-/* ---------------- 6. End card (90f) ---------------- */
+/* ---------------- 6. End card (135f) ---------------- */
 export const EndCard: React.FC = () => {
   const f = useCurrentFrame();
-  const HIT = 15;
+  const HIT = 45; // 1.5s for the protein line, then the logo hits
   const sh = shake(f, HIT, 26, "end");
   return (
     <AbsoluteFill style={{ backgroundColor: C.bg }}>
@@ -701,13 +712,31 @@ export const EndCard: React.FC = () => {
           <div
             style={{
               fontFamily: display,
-              fontSize: 150,
+              fontSize: 170,
+              letterSpacing: 2,
               color: C.text,
-              scale: ip(f, [0, HIT], [0.7, 1.15], Easing.in(Easing.quad)),
-              opacity: ip(f, [0, 4], [0, 1]),
+              display: "flex",
+              gap: 44,
+              // ease in, slow push while it holds, ease out into the hit
+              scale: ip(f, [0, 12, HIT - 8, HIT], [0.86, 1, 1.04, 1.12], outExpo),
+              opacity: ip(f, [HIT - 5, HIT], [1, 0], Easing.in(Easing.cubic)),
+              filter: `blur(${ip(f, [HIT - 6, HIT], [0, 14], Easing.in(Easing.cubic))}px)`,
             }}
           >
-            NOW EAT YOUR PROTEIN.
+            {["NOW", "EAT", "YOUR", "PROTEIN."].map((w, i) => (
+              <span
+                key={w}
+                style={{
+                  display: "inline-block",
+                  color: i === 3 ? C.orange : C.text,
+                  opacity: ip(f, [i * 5, i * 5 + 8], [0, 1], outExpo),
+                  translate: `0 ${ip(f, [i * 5, i * 5 + 12], [70, 0], outExpo)}px`,
+                  textShadow: i === 3 ? "0 0 70px rgba(255,90,31,0.5)" : "none",
+                }}
+              >
+                {w}
+              </span>
+            ))}
           </div>
         </AbsoluteFill>
       )}
@@ -723,7 +752,7 @@ export const EndCard: React.FC = () => {
               alignItems: "center",
               flexDirection: "column",
               translate: `${sh.x}px ${sh.y}px`,
-              scale: ip(f, [HIT, 90], [1.0, 1.05], Easing.linear),
+              scale: ip(f, [HIT, 135], [1.0, 1.05], Easing.linear),
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 50 }}>
@@ -778,7 +807,7 @@ export const EndCard: React.FC = () => {
         </>
       )}
       <Flash at={HIT} strength={0.9} />
-      <AbsoluteFill style={{ backgroundColor: "#000", opacity: ip(f, [76, 90], [0, 1], outExpo) }} />
+      <AbsoluteFill style={{ backgroundColor: "#000", opacity: ip(f, [118, 135], [0, 1], Easing.inOut(Easing.cubic)) }} />
     </AbsoluteFill>
   );
 };

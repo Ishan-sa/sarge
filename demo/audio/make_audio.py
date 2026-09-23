@@ -11,7 +11,7 @@ from scipy.signal import butter, fftconvolve, sosfilt
 
 SR = 44100
 FPS = 30
-DUR = 25.0
+DUR = 26.5
 N = int(SR * DUR)
 BEAT = 0.5
 rng = np.random.default_rng(7)
@@ -187,7 +187,7 @@ def s(frame):
 
 
 DROP = s(150)
-END_HIT = s(675)
+END_HIT = s(705)
 
 # Intro: slams on 0,30,60,90 with sub booms; riser into drop; tension pulse
 for f in [2, 30, 60]:
@@ -218,7 +218,7 @@ while True:
     if at >= groove_end - 1e-6:
         break
     # kick every beat, except a 2-beat break right before the end card
-    in_break = s(630) <= at < s(660)
+    in_break = s(675) <= at < s(705)
     if not in_break or (beat_i % 2 == 0):
         if beat_i > 0:
             place(music, kick(), at, 0.95)
@@ -288,6 +288,9 @@ for bi in range(n_bars):
     e = np.minimum(1, np.arange(len(p)) / SR / 0.08) * np.minimum(1, (len(p) - np.arange(len(p))) / SR / 0.1)
     place(pad, p * e, bstart, 0.13)
 music += pad * duck
+
+# riser into the end-card hit
+place(music, riser(END_HIT - s(678) - 0.05), s(678), 0.4)
 
 # End card hit + ring out
 place(music, kick(big=True), END_HIT, 1.0)

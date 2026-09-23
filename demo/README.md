@@ -1,6 +1,6 @@
 # Sarge demo video
 
-The 25-second demo in [`docs/demo.mp4`](../docs/demo.mp4), built with [Remotion](https://www.remotion.dev).
+The 26-second demo in [`docs/demo.mp4`](../docs/demo.mp4), built with [Remotion](https://www.remotion.dev).
 The soundtrack and sound effects are synthesized from scratch in `audio/make_audio.py` (numpy + scipy), so there are no samples and nothing to license.
 
 ```bash

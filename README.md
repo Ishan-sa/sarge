@@ -16,8 +16,8 @@
 </p>
 
 <p align="center">
-  <a href="docs/demo.mp4"><img src="docs/assets/demo-poster.jpg" alt="Watch the 25-second demo" width="820"></a><br>
-  <sub>▶ <a href="docs/demo.mp4"><b>Watch the 25-second demo</b></a> (sound on 🔊)</sub>
+  <a href="docs/demo.mp4"><img src="docs/assets/demo-poster.jpg" alt="Watch the 26-second demo" width="820"></a><br>
+  <sub>▶ <a href="docs/demo.mp4"><b>Watch the 26-second demo</b></a> (sound on 🔊)</sub>
 </p>
 
 <table>
