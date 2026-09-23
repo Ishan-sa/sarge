@@ -1,6 +1,6 @@
 """Glue: user message -> Claude interpretation -> validated store writes -> reply HTML."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from html import escape
 
 from . import render
@@ -24,7 +24,11 @@ def apply(store: Store, result: dict, raw: str, ts: datetime) -> tuple[list[dict
             changes.append("🗑 <b>Removed an item</b>")
     for edit in result.get("item_edits", []):
         if store.item_day(edit.get("item_id")) == today and store.edit_item(edit["item_id"], edit):
-            changes.append(f"✏️ <b>Updated:</b> {render.item_line(edit)}")
+            changes.append(f"✏️ <b>Updated:</b> {render.item_line(store.item(edit['item_id']))}")
+    for se in result.get("slot_edits", []):
+        slot = se.get("slot")
+        if slot in VALID_SLOTS and store.entry_day(se.get("entry_id")) == today and store.set_entry_slot(se["entry_id"], slot):
+            changes.append(f"🏷 <b>Moved to {escape(render.SLOT_LABELS[slot])}</b>")
 
     items = [i for i in result.get("items", []) if i.get("name")]
     if items:
@@ -56,6 +60,7 @@ async def handle_text(store: Store, brain, text: str, ts: datetime) -> str:
         store.foods(),
         store.recent_messages(),
         store.totals(day),
+        store.day_entries(day - timedelta(days=1)),
     )
     result = await brain.interpret(prompt)
     items, changes = apply(store, result, text, ts)

@@ -233,3 +233,29 @@ def test_morning_knows_diet_day(store):
     assert "day 2 of the diet" in m.brief and "MISSED" in m.brief
     m = reminders.morning(store, at(8, 30, d=25))
     assert "day 4 of the diet" in m.brief and "logged NOTHING" in m.brief
+
+
+def test_slot_edit_moves_todays_entry(store):
+    apply(store, result(items=EGGS, is_meal=True, slot=S0), "yesterday eggs", at(11, d=21))
+    apply(store, result(items=EGGS, is_meal=True, slot="extra"), "burrito", at(11))
+    old, new = store.day_entries(day_of(at(11, d=21)))[0]["id"], store.day_entries(day_of(at(11)))[0]["id"]
+    _, changes = apply(store, result(slot_edits=[{"entry_id": new, "slot": S0}, {"entry_id": old, "slot": S1},
+                                                 {"entry_id": new, "slot": "brunch"}]), "that was breakfast", at(11, 5))
+    assert store.totals(day_of(at(11)))["slots"] == {S0}
+    assert store.day_entries(day_of(at(11, d=21)))[0]["slot"] == S0
+    assert len(changes) == 1 and "Moved" in changes[0]
+
+
+def test_item_edit_keeps_emoji(store):
+    apply(store, result(items=[{**EGGS[0], "emoji": "🍳"}], is_meal=True, slot=S0), "eggs", at(11))
+    item_id = store.day_entries(day_of(at(11)))[0]["items"][0]["id"]
+    _, changes = apply(store, result(item_edits=[{**EGGS[0], "item_id": item_id, "name": "3 eggs"}]), "3 eggs", at(11, 1))
+    assert changes == ["✏️ <b>Updated:</b> 🍳 3 eggs · 215 cal · 💪19g"]
+
+
+def test_prompt_sees_yesterday(store):
+    apply(store, result(items=EGGS, is_meal=True, slot=S0, title="breakfast burrito"), "burrito, 3 eggs", at(11, d=21))
+    brain = FakeBrain(result())
+    asyncio.run(handle_text(store, brain, "same burrito as yesterday", at(11)))
+    y = brain.prompts[0].split("YESTERDAY'S LOG")[1].split("TODAY'S LOG")[0]
+    assert "breakfast burrito" in y and "eggs 150g" in y

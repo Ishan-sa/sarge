@@ -39,6 +39,15 @@ SCHEMA = {
             "False for zero-cal drinks, a few bites, condiments, supplements.",
         },
         "slot": {"type": "string", "enum": [*SLOTS, "extra"]},
+        "slot_edits": {
+            "type": "array",
+            "description": "Re-tag an entry already in TODAY'S LOG, e.g. he says 'that was my breakfast'",
+            "items": {
+                "type": "object",
+                "properties": {"entry_id": {"type": "integer"}, "slot": {"type": "string", "enum": [*SLOTS, "extra"]}},
+                "required": ["entry_id", "slot"],
+            },
+        },
         "delete_entry_ids": {"type": "array", "items": {"type": "integer"}},
         "delete_item_ids": {"type": "array", "items": {"type": "integer"}},
         "item_edits": {
@@ -77,7 +86,7 @@ SCHEMA = {
         "reply": {"type": "string"},
     },
     "required": [
-        "items", "title", "is_meal", "slot", "delete_entry_ids", "delete_item_ids", "item_edits",
+        "items", "title", "is_meal", "slot", "slot_edits", "delete_entry_ids", "delete_item_ids", "item_edits",
         "water_ml", "steps", "vitamin_d", "save_foods", "show_status", "reply",
     ],
 }
@@ -108,14 +117,23 @@ His trainer's plan:
 {PLAN_TEXT}
 Daily targets: {TARGET_KCAL} kcal, {TARGET_PROTEIN} g protein.
 
-Plan slots (tag new food with the slot it fulfils; anything outside the plan is "extra"):
+Plan slots:
 {SLOT_LINES}
+Tag new food with the plan slot it stands in for. A meal fills a slot when it replaces that meal:
+he calls it that meal ("breakfast", "lunch"), it has that slot's core food (eggs, chicken, whey...),
+or it's the obvious meal for the time of day. A different dish is still that slot (a breakfast
+burrito IS breakfast). Use "extra" only when that slot is already filled today, or for small bites,
+drinks and add-ons. If he says an entry was a different meal, fix it with slot_edits.
 
 Rules:
 - Estimate macros realistically for what he describes. Split composite dishes into components
   (eggs, oil/butter, tortilla, sauce...). Cooking fat counts. If a size is vague, assume a typical
   portion and say what you assumed in the reply.
 - If a food matches one in MY FOODS, use those exact values (scaled to the quantity).
+- Log only what he says he ate. Never add items he didn't mention (no assumed oil, butter or sauce).
+  If cooking fat is plausibly missing, ask about it in the reply instead.
+- "Same as yesterday" / "the usual": copy the matching items from YESTERDAY'S LOG exactly (same
+  quantities and macros), then apply his changes ("minus the sauce", "4 eggs this time").
 - If he gives exact label values for a food, log it with them and add it to save_foods.
 - Corrections ("that rice was 200g", "remove the sauce", "delete that") go in item_edits /
   delete_item_ids / delete_entry_ids using ids from TODAY'S LOG. Never re-add items that are already logged.
@@ -132,15 +150,28 @@ Rules:
   numbers from TOTALS SO FAR when it makes the point land, but don't recite a status report."""
 
 
-def build_prompt(message: str, now_str: str, today_log: list[dict], foods: list[dict], history: list[dict], totals: dict | None = None) -> str:
-    log_lines = []
-    for e in today_log:
-        log_lines.append(f"entry {e['id']} at {e['ts'][11:16]} [{e['slot']}{', meal' if e['is_meal'] else ''}]: \"{e['raw']}\"")
+def _log_lines(entries: list[dict], ids: bool) -> list[str]:
+    lines = []
+    for e in entries:
+        head = f"entry {e['id']} " if ids else ""
+        title = f" {e['title']}" if e.get("title") else ""
+        lines.append(f"{head}at {e['ts'][11:16]} [{e['slot']}{', meal' if e['is_meal'] else ''}]{title}: \"{e['raw']}\"")
         for i in e["items"]:
-            log_lines.append(
-                f"  item {i['id']}: {i['name']} {i['grams'] or '?'}g — {i['kcal']:.0f} kcal, "
-                f"P{i['protein']:.0f} C{i['carbs']:.0f} F{i['fat']:.0f}"
+            tag = f"item {i['id']}: " if ids else "- "
+            grams = f"{i['grams']:g}" if i["grams"] else "?"
+            lines.append(
+                f"  {tag}{i['name']} {grams}g — {i['kcal']:.0f} kcal, "
+                f"P{i['protein']:.1f} C{i['carbs']:.1f} F{i['fat']:.1f}"
             )
+    return lines
+
+
+def build_prompt(
+    message: str, now_str: str, today_log: list[dict], foods: list[dict], history: list[dict],
+    totals: dict | None = None, yesterday_log: list[dict] | None = None,
+) -> str:
+    log_lines = _log_lines(today_log, ids=True)
+    y_lines = _log_lines(yesterday_log or [], ids=False)
     food_lines = [
         f"- {f['name']}: {f['description']} = {f['kcal']:.0f} kcal, P{f['protein']:.0f} C{f['carbs']:.0f} F{f['fat']:.0f}"
         for f in foods
@@ -153,6 +184,7 @@ def build_prompt(message: str, now_str: str, today_log: list[dict], foods: list[
     return (
         f"NOW: {now_str}\n\n"
         f"TOTALS SO FAR: {totals_line}\n\n"
+        f"YESTERDAY'S LOG (reference only, can't be edited):\n{chr(10).join(y_lines) or '(nothing)'}\n\n"
         f"TODAY'S LOG:\n{chr(10).join(log_lines) or '(nothing yet)'}\n\n"
         f"MY FOODS:\n{chr(10).join(food_lines) or '(none saved)'}\n\n"
         f"RECENT CONVERSATION:\n{chr(10).join(hist_lines) or '(none)'}\n\n"

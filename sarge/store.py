@@ -109,6 +109,14 @@ class Store:
                 f"UPDATE items SET {sets} WHERE id = ?", (*allowed.values(), item_id)
             ).rowcount > 0
 
+    def set_entry_slot(self, entry_id: int, slot: str) -> bool:
+        with self.db:
+            return self.db.execute("UPDATE entries SET slot = ? WHERE id = ?", (slot, entry_id)).rowcount > 0
+
+    def item(self, item_id: int) -> dict | None:
+        row = self.db.execute("SELECT * FROM items WHERE id = ?", (item_id,)).fetchone()
+        return dict(row) if row else None
+
     def last_entry_id(self, day: date) -> int | None:
         row = self.db.execute(
             "SELECT id FROM entries WHERE day = ? ORDER BY id DESC LIMIT 1", (day.isoformat(),)
