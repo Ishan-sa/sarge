@@ -71,6 +71,31 @@ def meal_reply(title: str, items: list[dict], t: dict, comment: str) -> str:
     return "\n\n".join(parts)
 
 
+def photo_reply(kind: str, items: list[dict], picks: list[dict], t: dict, comment: str) -> str:
+    """Photo answers. Nothing here is logged; the numbers are Claude's estimate."""
+    parts = []
+    if kind == "plate" and items:
+        kcal = sum(i["kcal"] for i in items)
+        protein = sum(i["protein"] for i in items)
+        after = {**t, "kcal": t["kcal"] + kcal, "protein": t["protein"] + protein}
+        parts += [
+            f"📸 <b>Estimate: {fmt(kcal)} cal · {fmt(protein)}g protein</b> (not logged)\n"
+            f"If you eat it → {left_line(after)}",
+            "\n".join(item_line(i) for i in items),
+        ]
+    elif kind == "menu" and picks:
+        lines = [
+            f"{p.get('emoji') or '•'} {escape(p['name'])} · ~{fmt(p['kcal'])} cal · 💪{fmt(p['protein'])}g\n   ↳ {escape(p['how'])}"
+            for p in picks
+        ]
+        parts += [f"🍽 <b>Best picks for what's left</b>\n{left_line(t)}", "\n".join(lines)]
+    if comment:
+        parts.append(f"🗣 {escape(comment)}")
+    if kind == "plate" and items:
+        parts.append("Reply \"ate it\" to log it, or correct me first.")
+    return "\n\n".join(parts) or "Couldn't make that out. Send a clearer photo."
+
+
 def other_reply(changes: list[str], t: dict, comment: str, show_status: bool) -> str:
     """Replies with no new food. Chat stays chat: stats only when he asks for them."""
     parts = []

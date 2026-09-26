@@ -5,7 +5,7 @@ import pytest
 
 from sarge import reminders
 from sarge.config import TZ
-from sarge.core import apply, handle_text
+from sarge.core import apply, handle_photo, handle_text
 from sarge.plan import SLOTS
 from sarge.store import Store, day_of
 
@@ -157,6 +157,11 @@ class FakeBrain:
         self.prompts.append(prompt)
         return self.res
 
+    async def look(self, prompt, image, media_type):
+        self.prompts.append(prompt)
+        self.image = (image, media_type)
+        return self.res
+
 
 def test_meal_reply_summary_first(store):
     brain = FakeBrain(result(items=EGGS, title="scrambled eggs", is_meal=True, slot=S0, reply="Butter counted."))
@@ -259,3 +264,27 @@ def test_prompt_sees_yesterday(store):
     asyncio.run(handle_text(store, brain, "same burrito as yesterday", at(11)))
     y = brain.prompts[0].split("YESTERDAY'S LOG")[1].split("TODAY'S LOG")[0]
     assert "breakfast burrito" in y and "eggs 150g" in y
+
+
+PLATE = [{"name": "Butter chicken", "emoji": "🍛", "grams": 300, "kcal": 480, "protein": 32, "carbs": 14, "fat": 32}]
+
+
+def test_plate_photo_estimates_without_logging(store):
+    brain = FakeBrain({"kind": "plate", "items": PLATE, "picks": [], "reply": "Creamy. Eat half."})
+    out = asyncio.run(handle_photo(store, brain, b"img", "image/jpeg", "dinner?", at(19)))
+    assert out.splitlines()[0] == "📸 <b>Estimate: 480 cal · 32g protein</b> (not logged)"
+    assert "🍛 Butter chicken · 480 cal · 💪32g" in out and "ate it" in out
+    assert store.day_entries(day_of(at(19))) == []
+    assert brain.image == (b"img", "image/jpeg") and "dinner?" in brain.prompts[0]
+    # the estimate lands in history with exact numbers, so "ate it" can log it next
+    hist = [m["text"] for m in store.recent_messages()]
+    assert "[photo] dinner?" in hist and any("Butter chicken 300g — 480 kcal P32 C14 F32" in h for h in hist)
+
+
+def test_menu_photo_recommends_picks(store):
+    picks = [{"name": "Tandoori chicken (half)", "emoji": "🍗", "kcal": 450, "protein": 48, "how": "skip the butter naan"}]
+    brain = FakeBrain({"kind": "menu", "items": [], "picks": picks, "reply": "Easy call."})
+    out = asyncio.run(handle_photo(store, brain, b"img", "image/jpeg", "", at(19)))
+    assert out.splitlines()[0] == "🍽 <b>Best picks for what's left</b>"
+    assert "🍗 Tandoori chicken (half) · ~450 cal · 💪48g\n   ↳ skip the butter naan" in out
+    assert "🗣 Easy call." in out and store.day_entries(day_of(at(19))) == []

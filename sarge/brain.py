@@ -1,6 +1,7 @@
 """Claude as the interpreter: free text in, structured actions out. No arithmetic on totals."""
 
 import asyncio
+import base64
 import json
 import os
 import tempfile
@@ -132,6 +133,8 @@ Rules:
 - If a food matches one in MY FOODS, use those exact values (scaled to the quantity).
 - Log only what he says he ate. Never add items he didn't mention (no assumed oil, butter or sauce).
   If cooking fat is plausibly missing, ask about it in the reply instead.
+- If he confirms eating something Sarge estimated from a photo in RECENT CONVERSATION ("ate it",
+  "log it"), log those items with exactly those numbers, applying any corrections he gives.
 - "Same as yesterday" / "the usual": copy the matching items from YESTERDAY'S LOG exactly (same
   quantities and macros), then apply his changes ("minus the sauce", "4 eggs this time").
 - If he gives exact label values for a food, log it with them and add it to save_foods.
@@ -192,6 +195,55 @@ def build_prompt(
     )
 
 
+PHOTO_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "kind": {"type": "string", "enum": ["menu", "plate", "other"]},
+        "items": {
+            "type": "array",
+            "description": "plate only: every component you can see, one line each, with your estimated amount",
+            "items": SCHEMA["properties"]["items"]["items"],
+        },
+        "picks": {
+            "type": "array",
+            "description": "menu only: the 1-3 best orders for what's left today, best first",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "dish as written on the menu, short"},
+                    "emoji": {"type": "string"},
+                    "kcal": {"type": "number", "description": "estimate for what he'd actually eat, after the tweak"},
+                    "protein": {"type": "number"},
+                    "how": {"type": "string", "description": "how to order/eat it, max ~10 words, e.g. 'sauce on the side, skip the naan'"},
+                },
+                "required": ["name", "emoji", "kcal", "protein", "how"],
+            },
+        },
+        "reply": {"type": "string"},
+    },
+    "required": ["kind", "items", "picks", "reply"],
+}
+
+PHOTO_PROMPT = f"""You are Sarge, {USER_NAME}'s personal trainer on Telegram. He sent you a photo.
+{VOICE}
+His trainer's plan:
+{PLAN_TEXT}
+Daily targets: {TARGET_KCAL} kcal, {TARGET_PROTEIN} g protein. What matters: calories at or under,
+protein at or over. Judge against what's left today (TOTALS SO FAR).
+
+Decide what the photo is:
+- menu: a restaurant menu or menu board. Put the 1-3 best orders for what's left today in picks,
+  best first. Favour lean protein, grilled over fried, and watch for hidden fat (cream, butter,
+  cheese, oil, dressings). Estimate a realistic restaurant portion, which is bigger than home
+  cooking. "how" says how to order or eat it to fit the day. reply: 1-3 sentences, including which
+  dishes are traps and what a typical portion comes with.
+- plate: food he's about to eat or ate. List each visible component in items with an estimated
+  amount (grams) and macros. Use MY FOODS values where something matches. reply: 1-2 sentences,
+  mention anything you had to guess (hidden oil, portion under the sauce).
+- other: anything else, or too unclear to judge. Empty items and picks; say what you need.
+Nothing gets logged from a photo. NEVER state daily totals or what's remaining; the system shows them.
+His caption, if any, tells you what he wants; answer it."""
+
 WRITER_PROMPT = f"""You are Sarge, {USER_NAME}'s personal trainer, texting him on Telegram unprompted.
 {VOICE}
 
@@ -222,6 +274,21 @@ class ClaudeBrain:
             raise BrainError(f"no structured output: {str(data.get('result'))[:300]}")
         return result
 
+    async def look(self, prompt: str, image: bytes, media_type: str) -> dict:
+        """Photo in, structured estimate or menu picks out. Nothing is logged from this."""
+        message = {"type": "user", "message": {"role": "user", "content": [
+            {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": base64.b64encode(image).decode()}},
+            {"type": "text", "text": prompt},
+        ]}}
+        data = await self._run(
+            json.dumps(message), "--system-prompt", PHOTO_PROMPT, "--json-schema", json.dumps(PHOTO_SCHEMA),
+            "--input-format", "stream-json", stream=True,
+        )
+        result = data.get("structured_output")
+        if not isinstance(result, dict):
+            raise BrainError(f"no structured output: {str(data.get('result'))[:300]}")
+        return result
+
     async def write(self, brief: str) -> str:
         """Free-text message in Sarge's voice for a scheduled reminder."""
         data = await self._run(brief, "--system-prompt", WRITER_PROMPT)
@@ -230,11 +297,13 @@ class ClaudeBrain:
             raise BrainError("empty message")
         return text
 
-    async def _run(self, prompt: str, *extra: str) -> dict:
+    async def _run(self, prompt: str, *extra: str, stream: bool = False) -> dict:
+        # stream-json input (needed for images) only works with stream-json output
+        output = ("--output-format", "stream-json", "--verbose") if stream else ("--output-format", "json")
         proc = await asyncio.create_subprocess_exec(
             self.claude_bin, "-p",
             *extra,
-            "--output-format", "json",
+            *output,
             "--tools", "",
             "--strict-mcp-config",
             "--setting-sources", "",
@@ -254,7 +323,11 @@ class ClaudeBrain:
         if proc.returncode != 0:
             raise BrainError(f"exit {proc.returncode}: {err.decode()[-300:]}")
         try:
-            data = json.loads(out)
+            if stream:
+                lines = [json.loads(line) for line in out.decode().splitlines() if line.strip()]
+                data = next((d for d in reversed(lines) if d.get("type") == "result"), {})
+            else:
+                data = json.loads(out)
         except json.JSONDecodeError as e:
             raise BrainError(f"bad JSON from claude: {e}")
         if data.get("is_error"):

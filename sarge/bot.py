@@ -11,7 +11,7 @@ from telegram.ext import Application, Defaults, CommandHandler, ContextTypes, Me
 from . import reminders, render
 from .brain import BrainError, ClaudeBrain
 from .config import ROOT, TARGET_KCAL, TARGET_PROTEIN, env, load_env
-from .core import handle_text
+from .core import handle_photo, handle_text
 from .sheets import SheetMirror
 from .store import Store, day_of, now
 
@@ -20,7 +20,8 @@ log = logging.getLogger("sarge")
 HELP = (
     "🫡 <b>Sarge.</b> Tell me everything you eat, with quantities.\n\n"
     "💧 \"1L water\" · 👟 \"9200 steps\" · 💊 \"took vit D\"\n"
-    "📌 Give label values once and I remember them.\n\n"
+    "📌 Give label values once and I remember them.\n"
+    "📸 Send a menu and I'll tell you what to order. Send your plate for an estimate.\n\n"
     "/today · /week · /undo · /foods"
 )
 
@@ -114,6 +115,27 @@ class Sarge:
         await update.message.reply_text(reply)
         self.mirror()
 
+    async def photo(self, update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
+        if not self.is_owner(update):
+            return
+        msg = update.message
+        if msg.photo:
+            file, media_type = await msg.photo[-1].get_file(), "image/jpeg"  # largest size
+        else:
+            file, media_type = await msg.document.get_file(), msg.document.mime_type
+        if media_type not in ("image/jpeg", "image/png", "image/webp", "image/gif"):
+            await msg.reply_text("Send it as a normal photo (JPEG or PNG) and I'll take a look.")
+            return
+        await update.effective_chat.send_action(ChatAction.TYPING)
+        image = bytes(await file.download_as_bytearray())
+        async with self.lock:
+            try:
+                reply = await handle_photo(self.store, self.brain, image, media_type, msg.caption or "", now())
+            except BrainError as e:
+                log.warning("brain failed on photo: %s", e)
+                reply = "⚠️ Couldn't read that photo. Try again."
+        await msg.reply_text(reply)
+
     async def tick(self, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         chat_id = self.store.get("chat_id")
         if chat_id is None:
@@ -153,6 +175,7 @@ def main() -> None:
     app.add_handler(CommandHandler("undo", sarge.undo))
     app.add_handler(CommandHandler("foods", sarge.foods))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, sarge.text))
+    app.add_handler(MessageHandler(filters.PHOTO | filters.Document.IMAGE, sarge.photo))
     app.job_queue.run_repeating(sarge.tick, interval=60, first=15)
     log.info("Sarge up")
     app.run_polling(allowed_updates=Update.ALL_TYPES)

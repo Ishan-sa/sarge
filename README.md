@@ -57,6 +57,7 @@ sarge  › ✅ Logged burrito bowl: 569 cal · 58g protein
 ## ✨ What it does
 
 - **Logs food from plain English.** "Chicken rice bowl, 150g chicken, 5g oil", "a handful of almonds", "that rice was 200g actually". Mixed dishes get split into their parts, and fixes edit the right item.
+- **Reads photos.** Send a restaurant menu and it picks the best 1–3 orders for what's left today, with how to order them ("sauce on the side, skip the naan"). Send your plate and it estimates each item. Nothing is logged until you reply "ate it" (or "ate half").
 - **Remembers your foods.** Give it a label once ("Chobani 0% Greek yogurt, 170g: 90 cal, 16g protein…") and it uses those exact numbers from then on.
 - **Only tells you what matters.** Every meal reply starts with one summary line: calories and protein logged, and what's left today. Chat that isn't food gets a short answer with no stats.
 - **Stays on your case:**
@@ -194,6 +195,8 @@ The sync sends a full copy of the day every time, so a failed push is fixed by t
 | `that rice was 200g` / `remove the sauce` / `delete that` | Edits or deletes today's items |
 | `Chobani 0% Greek yogurt 170g: 90 cal, 16g protein, 6g carbs, 0g fat` | Saves the label values for next time |
 | `1L water` · `9200 steps` · `took vit D` | Tracks the extras |
+| 📸 a photo of a menu | Suggests what to order for what's left today |
+| 📸 a photo of your plate, then `ate it` | Estimates it, then logs it once you confirm |
 | `what's left?` / `what should I eat?` | Shows the numbers and suggests your next meal |
 | `/today` | Everything logged today |
 | `/week` | A table of the last 7 days |

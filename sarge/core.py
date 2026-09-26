@@ -76,3 +76,33 @@ async def handle_text(store: Store, brain, text: str, ts: datetime) -> str:
     store.add_message(ts, "user", text)
     store.add_message(ts, "sarge", comment or "(logged)")
     return out
+
+
+def _estimate_note(result: dict) -> str:
+    """How a photo answer is remembered in history, with exact numbers so "ate it" can log it."""
+    lines = [
+        f"{i['name']} {i['grams']:g}g — {i['kcal']:.0f} kcal P{i['protein']:.0f} C{i['carbs']:.0f} F{i['fat']:.0f}"
+        for i in result.get("items", [])
+    ]
+    lines += [f"pick: {p['name']} ~{p['kcal']:.0f} kcal P{p['protein']:.0f} ({p['how']})" for p in result.get("picks", [])]
+    note = f"(photo {result.get('kind', 'other')}, NOT logged) " + "; ".join(lines) if lines else ""
+    return " | ".join(x for x in (note, result.get("reply", "").strip()) if x) or "(photo)"
+
+
+async def handle_photo(store: Store, brain, image: bytes, media_type: str, caption: str, ts: datetime) -> str:
+    day = day_of(ts)
+    prompt = build_prompt(
+        caption or "(photo, no caption)",
+        ts.strftime("%A %Y-%m-%d %H:%M"),
+        store.day_entries(day),
+        store.foods(),
+        store.recent_messages(),
+        store.totals(day),
+    )
+    result = await brain.look(prompt, image, media_type)
+    items = [i for i in result.get("items", []) if i.get("name")]
+    picks = [p for p in result.get("picks", []) if p.get("name")]
+    out = render.photo_reply(result.get("kind", "other"), items, picks, store.totals(day), result.get("reply", "").strip())
+    store.add_message(ts, "user", f"[photo] {caption}".strip())
+    store.add_message(ts, "sarge", _estimate_note({**result, "items": items, "picks": picks}))
+    return out
