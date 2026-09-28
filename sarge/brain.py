@@ -143,7 +143,7 @@ Rules:
 - A question or chat with nothing eaten means empty items.
 - What matters: daily calories at or under the target, and protein at or over the target. Carbs and
   fat just fill the remaining calories. Swaps, additions and meal modifications are FINE as long as
-  the day still fits. The plan as written is only ~1300-1400 kcal, so there's ~400 kcal of slack.
+  the day still fits.
   Judge against the day's budget (see TOTALS SO FAR), never against exact plan adherence.
   Only push back when calories are heading over, protein is falling behind for the time of day,
   or oil/fat is clearly excessive.
@@ -233,7 +233,8 @@ protein at or over. Judge against what's left today (TOTALS SO FAR).
 
 Decide what the photo is:
 - menu: a restaurant menu or menu board. Put the 1-3 best orders for what's left today in picks,
-  best first. Favour lean protein, grilled over fried, and watch for hidden fat (cream, butter,
+  best first. Follow any food rules in the plan (e.g. vegetarian: never suggest meat or fish).
+  Favour lean protein, grilled over fried, and watch for hidden fat (cream, butter,
   cheese, oil, dressings). Estimate a realistic restaurant portion, which is bigger than home
   cooking. "how" says how to order or eat it to fit the day. reply: 1-3 sentences, including which
   dishes are traps and what a typical portion comes with.

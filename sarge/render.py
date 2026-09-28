@@ -139,9 +139,9 @@ def wrap_up(t: dict) -> str:
     if t["kcal"] > TARGET_KCAL + 100:
         problems.append(f"🔥 {fmt(t['kcal'] - TARGET_KCAL)} cal over")
     if t["water_ml"] < TARGET_WATER_ML:
-        problems.append("💧 water under 3L" if t["water_ml"] else "💧 no water logged")
+        problems.append(f"💧 water under {TARGET_WATER_ML / 1000:g}L" if t["water_ml"] else "💧 no water logged")
     if t["steps"] is None or t["steps"] < TARGET_STEPS:
-        problems.append("👟 steps under 8k" if t["steps"] is not None else "👟 no steps logged")
+        problems.append(f"👟 steps under {TARGET_STEPS / 1000:g}k" if t["steps"] is not None else "👟 no steps logged")
     if not t["vitd"]:
         problems.append("💊 no vitamin D")
     verdict = "✅ Clean day. Do it again tomorrow." if not problems else "❌ " + "\n❌ ".join(problems)
