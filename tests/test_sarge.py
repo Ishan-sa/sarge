@@ -288,3 +288,12 @@ def test_menu_photo_recommends_picks(store):
     assert out.splitlines()[0] == "🍽 <b>Best picks for what's left</b>"
     assert "🍗 Tandoori chicken (half) · ~450 cal · 💪48g\n   ↳ skip the butter naan" in out
     assert "🗣 Easy call." in out and store.day_entries(day_of(at(19))) == []
+
+
+def test_pronouns(monkeypatch):
+    from sarge import config
+    text = "Push him. His plan; he says he took it himself."
+    assert config.pronouns(text) == text
+    monkeypatch.setattr(config, "PRONOUNS", "she")
+    assert config.pronouns(text) == "Push her. Her plan; she says she took it herself."
+    assert config.pronouns("the chef, then") == "the chef, then"

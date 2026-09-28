@@ -6,7 +6,7 @@ import json
 import os
 import tempfile
 
-from .config import TARGET_KCAL, TARGET_PROTEIN, TARGET_STEPS, TARGET_WATER_ML, USER_NAME
+from .config import TARGET_KCAL, TARGET_PROTEIN, TARGET_STEPS, TARGET_WATER_ML, USER_NAME, pronouns
 from .plan import PLAN_TEXT, SLOTS
 
 MACROS = {
@@ -268,7 +268,7 @@ class ClaudeBrain:
         self.workdir = tempfile.mkdtemp(prefix="sarge-brain-")  # empty dir: no project CLAUDE.md
 
     async def interpret(self, prompt: str) -> dict:
-        data = await self._run(prompt, "--system-prompt", SYSTEM_PROMPT, "--json-schema", json.dumps(SCHEMA))
+        data = await self._run(prompt, "--system-prompt", pronouns(SYSTEM_PROMPT), "--json-schema", pronouns(json.dumps(SCHEMA)))
         result = data.get("structured_output")
         if not isinstance(result, dict):
             raise BrainError(f"no structured output: {str(data.get('result'))[:300]}")
@@ -281,7 +281,7 @@ class ClaudeBrain:
             {"type": "text", "text": prompt},
         ]}}
         data = await self._run(
-            json.dumps(message), "--system-prompt", PHOTO_PROMPT, "--json-schema", json.dumps(PHOTO_SCHEMA),
+            json.dumps(message), "--system-prompt", pronouns(PHOTO_PROMPT), "--json-schema", pronouns(json.dumps(PHOTO_SCHEMA)),
             "--input-format", "stream-json", stream=True,
         )
         result = data.get("structured_output")
@@ -291,7 +291,7 @@ class ClaudeBrain:
 
     async def write(self, brief: str) -> str:
         """Free-text message in Sarge's voice for a scheduled reminder."""
-        data = await self._run(brief, "--system-prompt", WRITER_PROMPT)
+        data = await self._run(pronouns(brief), "--system-prompt", pronouns(WRITER_PROMPT))
         text = (data.get("result") or "").strip()
         if not text:
             raise BrainError("empty message")

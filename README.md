@@ -145,6 +145,7 @@ Set at least these:
 | `CLAUDE_BIN` | The absolute path from `which claude` |
 | `OWNER_ID` | Your Telegram user id. If you leave it empty, the first person to send `/start` owns the bot. |
 | `SARGE_USER_NAME` | Your name, as Sarge should use it |
+| `SARGE_PRONOUNS` | `he` or `she`: how Sarge's prompts refer to you (default `he`) |
 
 These are optional: `CLAUDE_MODEL` (default `sonnet`), `SARGE_TZ` (default `America/Vancouver`), and `TARGET_KCAL`, `TARGET_PROTEIN`, `TARGET_WATER_ML`, `TARGET_STEPS`.
 
