@@ -298,3 +298,9 @@ def test_pronouns(monkeypatch):
     monkeypatch.setattr(config, "PRONOUNS", "she")
     assert config.pronouns(text) == "Push her. Her plan; she says she took it herself."
     assert config.pronouns("the chef, then") == "the chef, then"
+
+
+def test_reply_markup_leak_is_stripped():
+    from sarge.brain import clean_reply
+    assert clean_reply("Skip the naan.</reply>\n</invoke>") == "Skip the naan."
+    assert clean_reply("Paneer <3 is fine") == "Paneer <3 is fine"

@@ -4,6 +4,7 @@ import asyncio
 import base64
 import json
 import os
+import re
 import tempfile
 
 from .config import TARGET_KCAL, TARGET_PROTEIN, TARGET_STEPS, TARGET_WATER_ML, USER_NAME, pronouns
@@ -257,6 +258,14 @@ use a number only when it makes the point land. Use the facts, be specific, neve
 Length: morning 2-3 sentences, meal nudge 1-2, nag 1-2, night review 3-5."""
 
 
+_LEAKED_TAGS = re.compile(r"\s*</?(?:reply|invoke|parameter|antml:[\w-]+)\b[^>]*>", re.IGNORECASE)
+
+
+def clean_reply(text: str) -> str:
+    """The model occasionally leaks tool-call markup (</reply></invoke>) into the reply text."""
+    return _LEAKED_TAGS.sub("", text).strip()
+
+
 class BrainError(Exception):
     pass
 
@@ -273,6 +282,7 @@ class ClaudeBrain:
         result = data.get("structured_output")
         if not isinstance(result, dict):
             raise BrainError(f"no structured output: {str(data.get('result'))[:300]}")
+        result["reply"] = clean_reply(result.get("reply") or "")
         return result
 
     async def look(self, prompt: str, image: bytes, media_type: str) -> dict:
@@ -288,12 +298,13 @@ class ClaudeBrain:
         result = data.get("structured_output")
         if not isinstance(result, dict):
             raise BrainError(f"no structured output: {str(data.get('result'))[:300]}")
+        result["reply"] = clean_reply(result.get("reply") or "")
         return result
 
     async def write(self, brief: str) -> str:
         """Free-text message in Sarge's voice for a scheduled reminder."""
         data = await self._run(pronouns(brief), "--system-prompt", pronouns(WRITER_PROMPT))
-        text = (data.get("result") or "").strip()
+        text = clean_reply(data.get("result") or "")
         if not text:
             raise BrainError("empty message")
         return text
