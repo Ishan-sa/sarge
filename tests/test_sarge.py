@@ -293,6 +293,7 @@ def test_menu_photo_recommends_picks(store):
 def test_pronouns(monkeypatch):
     from sarge import config
     text = "Push him. His plan; he says he took it himself."
+    monkeypatch.setattr(config, "PRONOUNS", "he")
     assert config.pronouns(text) == text
     monkeypatch.setattr(config, "PRONOUNS", "she")
     assert config.pronouns(text) == "Push her. Her plan; she says she took it herself."
