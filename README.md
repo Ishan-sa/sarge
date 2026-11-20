@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <b>You text it what you ate, in plain English.</b> It works out the calories and protein, tells you what's left for the day, and nags you when you skip meals.<br>
+  <b>You text it what you ate, in plain English.</b> Or send a photo of the label, the pack or your plate. It works out the calories and macros and tells you what's left for the day.<br>
   Claude reads your messages. Python does all the math. No sympathy included.
 </p>
 
@@ -22,13 +22,11 @@
 
 <table>
   <tr>
-    <td width="33%"><img src="docs/assets/shot-chat.jpg" alt="Logging a meal"></td>
-    <td width="33%"><img src="docs/assets/shot-reminders.jpg" alt="Scheduled reminders"></td>
-    <td width="33%"><img src="docs/assets/shot-how.jpg" alt="How it works"></td>
+    <td width="50%"><img src="docs/assets/shot-chat.jpg" alt="Logging a meal"></td>
+    <td width="50%"><img src="docs/assets/shot-how.jpg" alt="How it works"></td>
   </tr>
   <tr>
-    <td align="center"><b>🍗 Log in plain English</b><br><sub>Exact calories and protein, plus what's left</sub></td>
-    <td align="center"><b>⏰ It doesn't wait for you</b><br><sub>Morning kick-off, meal nudges, a night review</sub></td>
+    <td align="center"><b>🍗 Log in plain English</b><br><sub>Exact calories and macros, plus what's left</sub></td>
     <td align="center"><b>🧠 Claude reads, 🐍 Python counts</b><br><sub>Self-hosted on your Claude subscription</sub></td>
   </tr>
 </table>
@@ -36,35 +34,38 @@
 ## 💬 What a reply looks like
 
 ```
-you    › chicken burrito bowl, 150g chicken, 150g rice, black beans, salsa
+you    › [photo of a protein tortilla pack, label side]
+         using two of these
 
-sarge  › ✅ Logged burrito bowl: 569 cal · 58g protein
-         Left today: 831 cal · 40g protein
+sarge  › 📸 Reading your photos…
 
-         🍗 Grilled chicken 150g · 248 cal · 💪46g
-         🍚 Rice 150g · 195 cal · 💪4g
-         🫘 Black beans 80g · 106 cal · 💪7g
-         🍅 Salsa · 20 cal · 💪1g
+         📝 Draft Acme protein tortilla x2: 220 cal · 20g P · 28g C · 8g F
+         🌯 Acme protein tortilla x2 · 220 cal · 💪20g
 
-         🔥 ▰▰▰▰▰▱▱▱▱▱ 969 / 1,800 cal
-         💪 ▰▰▰▰▰▰▰▱▱▱ 90 / 130g protein
+         Say "ate it" to log it, or correct me first.
 
-         🗣 Now that's a lunch. Don't ruin it with a 4pm cookie.
+you    › add 100g chicken, then ate it
 
-         ⏭ Next: Snack — protein shake + a banana
+sarge  › ✅ Logged tortilla wrap: 385 cal · 51g P · 28g C · 11g F
+         Left today: 1,415 cal · 79g protein
+
+         🌯 Acme protein tortilla x2 · 220 cal · 💪20g
+         🍗 Grilled chicken 100g · 165 cal · 💪31g
+
+         🔥 ▰▰▱▱▱▱▱▱▱▱ 385 / 1,800 cal
+         💪 ▰▰▰▰▱▱▱▱▱▱ 51 / 130g protein
+
+         🗣 Two items, one wrap, no excuses. Now go drink some water.
 ```
 
 ## ✨ What it does
 
-- **Logs food from plain English.** "Chicken rice bowl, 150g chicken, 5g oil", "a handful of almonds", "that rice was 200g actually". Mixed dishes get split into their parts, and fixes edit the right item.
-- **Reads photos.** Send a restaurant menu and it picks the best 1–3 orders for what's left today, with how to order them ("sauce on the side, skip the naan"). Send your plate and it estimates each item. Nothing is logged until you reply "ate it" (or "ate half").
-- **Remembers your foods.** Give it a label once ("Chobani 0% Greek yogurt, 170g: 90 cal, 16g protein…") and it uses those exact numbers from then on.
-- **Only tells you what matters.** Every meal reply starts with one summary line: calories and protein logged, and what's left today. Chat that isn't food gets a short answer with no stats.
-- **Stays on your case:**
-  - A morning message at 8:30 with yesterday's result and your streak
-  - A "go eat" reminder 3.5 hours after your last real meal. Black coffee or a few bites don't reset the timer.
-  - A 1pm nag if you haven't logged anything yet
-  - A night review at 10pm
+- **Reads photos.** Send a nutrition label, a pack or a plate. Albums are read together, so a pack and its label count as one call. A photo makes a draft: nothing is logged until you reply "ate it" (or "ate half", or correct it first). Menu photos get the best 1-3 orders for what's left today.
+- **Logs food from plain English.** "Chicken rice bowl, 150g chicken, 5g oil", "a handful of almonds", "that rice was 200g actually". Mixed dishes get split into their parts, and fixes edit the right item. Questions never log anything.
+- **Remembers your products.** Read a label once and it keeps the brand, variant, serving size and exact macros. Next time, "two Acme tortillas" is scaled from the saved label, with no new estimate. Set a default when you have several versions of the same food. Use `/foods` to see what it knows.
+- **Goals live in chat.** "New goal: 1500 cal, 100g protein" changes them for today onward, and `/goals` shows them. The `TARGET_*` values in `.env` are only the starting goals.
+- **Only tells you what matters.** Every meal reply starts with one summary line: calories and all four macros, and what's left today. Chat that isn't food gets a short answer with no stats.
+- **One night summary, no reminders.** Sarge never pings you during the day. Once a day (default 22:00) it sends a summary: what went well, where you slipped, one thing to fix tomorrow, with the day's numbers underneath. Change the time from chat: "send my summary at 11".
 - **Tracks water, steps and vitamin D** too: "1L water", "9200 steps", "took vit D".
 - **Can copy your log to a Google Sheet**: a Daily tab with one row per day, and a Log tab with every item.
 - **Costs nothing to run.** The "brain" is [Claude Code](https://docs.anthropic.com/en/docs/claude-code) in headless mode, signed in with your existing Claude subscription. No API key, no paid servers. It runs on any always-on machine: a home server, a Raspberry Pi 5, an old laptop.
@@ -75,19 +76,21 @@ sarge  › ✅ Logged burrito bowl: 569 cal · 58g protein
 flowchart LR
     T[Telegram] -->|your message| B[bot.py]
     B --> C[core.py]
-    C -->|prompt + today's log + your foods| L["claude -p --json-schema"]
+    C -->|prompt, photos, today's log, your foods| L["claude -p --json-schema"]
     L -->|structured actions + reply| C
     C --> S[(SQLite)]
     C --> R[render.py]
-    R -->|summary, bars, next meal| T
+    R -->|summary, macros, bars| T
     S -.->|day snapshot| G[Google Sheet]
-    J[JobQueue, every 60s] --> M[reminders.py] --> T
+    J[JobQueue, every 60s] --> M[summary.py] --> T
 ```
 
 The work is split so the numbers are always right:
 
-- **Claude interprets.** It turns your text into structured actions: food items with macros, edits, deletions, water, steps, and foods to remember. It also writes the one-line trainer comment. The reply is checked against a JSON schema, and every item id is validated before it's applied.
-- **Python enforces.** It stores everything, adds up the totals, draws the progress bars, and runs the timers. Claude never states totals, so it can't get them wrong.
+- **Claude interprets.** It turns your text into structured actions: food items with macros, edits, deletions, water, steps, saved products and goal changes. It also writes the one-line trainer comment. The reply is checked against a JSON schema, and every item id is validated before it's applied.
+- **Python enforces.** It stores everything, adds up the totals, draws the progress bars, and runs the night summary timer. Claude never states totals, so it can't get them wrong.
+
+Photos go to a stronger model than text (`CLAUDE_PHOTO_MODEL`, default `opus`).
 
 A "day" ends at 4am, so a midnight snack counts toward the day you ate it.
 
@@ -147,9 +150,9 @@ Set at least these:
 | `SARGE_USER_NAME` | Your name, as Sarge should use it |
 | `SARGE_PRONOUNS` | `he` or `she`: how Sarge's prompts refer to you (default `he`) |
 
-These are optional: `CLAUDE_MODEL` (default `sonnet`), `SARGE_TZ` (default `America/Vancouver`), and `TARGET_KCAL`, `TARGET_PROTEIN`, `TARGET_WATER_ML`, `TARGET_STEPS`.
+These are optional: `CLAUDE_MODEL` (default `sonnet`, used for text), `CLAUDE_PHOTO_MODEL` (default `opus`, used for photos; set it to `sonnet` if Opus is too slow for you), `SARGE_TZ` (default `America/Vancouver`), and `TARGET_KCAL`, `TARGET_PROTEIN`, `TARGET_WATER_ML`, `TARGET_STEPS`. The `TARGET_*` values are only your starting goals. After that, change them from chat.
 
-**Put in your own diet plan.** `sarge/plan.py` holds an example plan. `PLAN_TEXT` is the plan in words, which Claude reads. `SLOTS` lists the meals Sarge tracks and suggests next. You can edit that file directly, or copy it to `sarge/plan_local.py`, which is gitignored and used instead, so your plan stays private and `git pull` never conflicts.
+**Put in your own diet plan.** `sarge/plan.py` holds an example plan. `PLAN_TEXT` is the plan in words, which Claude reads as food context and food rules (for example, vegetarian). You can edit that file directly, or copy it to `sarge/plan_local.py`, which is gitignored and used instead, so your plan stays private and `git pull` never conflicts.
 
 ### 5. Try it
 
@@ -157,7 +160,7 @@ These are optional: `CLAUDE_MODEL` (default `sonnet`), `SARGE_TZ` (default `Amer
 .venv/bin/python -m sarge.bot
 ```
 
-Send your bot `/start`, then something like `greek yogurt with berries and granola`. Stop it with `Ctrl+C` when you're done.
+Send your bot `/start`, then something like `greek yogurt with berries and granola`, or a photo of a nutrition label. Stop it with `Ctrl+C` when you're done.
 
 ### 6. Keep it running (systemd)
 
@@ -193,29 +196,35 @@ The sync sends a full copy of the day every time, so a failed push is fixed by t
 | You send | Sarge does |
 |---|---|
 | `salmon, 200g potatoes, broccoli, 5g olive oil` | Logs the meal and replies with what's left today |
-| `that rice was 200g` / `remove the sauce` / `delete that` | Edits or deletes today's items |
-| `Chobani 0% Greek yogurt 170g: 90 cal, 16g protein, 6g carbs, 0g fat` | Saves the label values for next time |
-| `1L water` · `9200 steps` · `took vit D` | Tracks the extras |
+| 📸 a nutrition label or pack (several photos as one album are read together) | Reads it and drafts the meal. If you didn't say how much, it asks. |
+| 📸 a photo of your plate | Estimates each item and drafts the meal |
+| `ate it` / `ate half` | Logs the pending draft |
 | 📸 a photo of a menu | Suggests what to order for what's left today |
-| 📸 a photo of your plate, then `ate it` | Estimates it, then logs it once you confirm |
-| `what's left?` / `what should I eat?` | Shows the numbers and suggests your next meal |
+| `that rice was 200g` / `remove the sauce` / `delete that` | Edits or deletes today's items |
+| `Acme protein tortilla, 1 wrap (60g): 110 cal, 10g protein, 14g carbs, 4g fat` | Saves the label values for next time |
+| `new goal: 1500 cal, 100g protein` | Changes your goals from today on |
+| `send my summary at 11` | Moves the night summary to 11pm |
+| `1L water` · `9200 steps` · `took vit D` | Tracks the extras |
+| `what's left?` / `what should I eat?` | Shows the numbers and suggests what to eat |
 | `/today` | Everything logged today |
 | `/week` | A table of the last 7 days |
 | `/undo` | Deletes the last entry |
-| `/foods` | The foods it remembers |
+| `/foods` | The products it remembers |
+| `/goals` | Your goals and summary time |
 
-### ⏰ Schedule
+### 🌙 The night summary
 
-All times are in `SARGE_TZ`. You can change them in `sarge/config.py`.
+The only message Sarge sends on its own. It goes out once a day at your summary time (default 22:00, in `SARGE_TZ`): Claude writes what went well, where you slipped and one thing to fix tomorrow, and Python adds the exact numbers and your streak below it. If Claude fails, a built-in template is sent instead. A missed summary is sent when the bot comes back up.
 
-| When | Message |
-|---|---|
-| 08:30 | Morning message: diet day number, how yesterday went, your streak |
-| 3.5 h after your last meal (08:00–21:30) | A reminder to eat. Only sent if protein or planned meals are still missing. |
-| 13:00, if nothing is logged | A nag |
-| 22:00 | Night review: what went well, where you slipped, one thing to fix tomorrow |
+## ⬆️ Upgrading from the original release
 
-Claude writes each reminder in the trainer voice, and Python adds the exact numbers below it. If Claude fails, a built-in template is sent instead, so reminders always go out. Reminders survive restarts, and a missed night review is sent when the bot comes back up.
+Version 1 changes how saved foods are stored, and drops the daily reminders of the original release (the reminder bot). Your history is kept.
+
+1. Back up the database: `cp data/sarge.db data/sarge.db.bak`
+2. Pull the new code and restart: `git pull && systemctl --user restart sarge`. On start, your old saved foods are converted automatically (the originals are kept in a `foods_v1` backup table).
+3. Optional: fill in brands and serving sizes on the converted foods with `.venv/bin/python -m sarge.migrate_foods`. It asks Claude to parse each old description into label fields, never changes your macros, and is safe to re-run.
+
+Also add `CLAUDE_PHOTO_MODEL` to your `.env` if you want to change the photo model.
 
 ## 🧪 Development
 
@@ -230,15 +239,18 @@ The demo video's source is in [`demo/`](demo). It's made with Remotion, with a s
 
 ```
 sarge/
-  bot.py        Telegram handlers, owner check, 60 s reminder tick
+  bot.py        Telegram handlers, owner check, photo albums, 60 s summary tick
   brain.py      Claude Code headless calls, JSON schema, prompts and voice
   core.py       applies Claude's actions to the store (validated, today only)
-  store.py      SQLite: entries, items, extras, saved foods, messages, state
-  render.py     every message layout (HTML): summary line, bars, next meal
-  reminders.py  decides which reminder is due and what it says
+  foods.py      label scaling
+  goals.py      goal parsing and validation
+  store.py      SQLite: entries, items, extras, saved foods, goals, messages, state
+  render.py     every message layout (HTML): summary line, macros, bars
+  summary.py    decides when the night summary is due and what it says
+  migrate_foods.py  one-off converter for saved foods from the original release
   sheets.py     Google Sheet mirror client
   plan.py       example diet plan (override in plan_local.py)
-  config.py     targets, schedule, env loading
+  config.py     starting goals, env loading
 deploy/
   sarge.service systemd user unit
   sheet.gs      Apps Script web app for the sheet mirror
@@ -247,7 +259,7 @@ deploy/
 ## 🩺 Troubleshooting
 
 - **The bot doesn't answer.** Run `journalctl --user -u sarge -f`. A line like `ignoring update from user X (owner is Y)` means `OWNER_ID` is wrong.
-- **"⚠️ Brain failed".** Run `$CLAUDE_BIN -p hi` as the same user the service runs as. You may need to sign in again. Each call times out after 90 s.
+- **"⚠️ Brain failed".** Run `$CLAUDE_BIN -p hi` as the same user the service runs as. You may need to sign in again. If photos time out, set `CLAUDE_PHOTO_MODEL=sonnet`.
 - **`claude: command not found` over SSH.** Non-login shells often don't have `~/.local/bin` on `PATH`. That's why `CLAUDE_BIN` is an absolute path.
 - **The sheet doesn't update.** Look for `sheet sync failed` in the logs. After you edit `sheet.gs`, deploy a new version: Deploy → Manage deployments → Edit → New version.
 

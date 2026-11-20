@@ -3,7 +3,7 @@
 Approved in chat 2026-09-22.
 
 ## Goal
-A blunt Telegram bot that logs everything Ishan eats against his trainer's plan
+A blunt Telegram bot that logs everything the owner eats against his trainer's plan
 (1800 kcal, 130 g protein), reports what's left, and nags him on a schedule
 relative to his actual meals.
 
@@ -12,7 +12,7 @@ relative to his actual meals.
 - Python 3.12 + python-telegram-bot (polling, JobQueue).
 - SQLite database (`~/sarge/data/sarge.db`).
 - Brain: Claude Code headless (`claude -p --json-schema`, Sonnet, no tools, no
-  settings/MCP) on Ishan's subscription. No API key.
+  settings/MCP) on the owner's subscription. No API key.
 
 ## Division of labour
 - **Claude interprets**: turns free text into structured actions (items with

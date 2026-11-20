@@ -47,12 +47,6 @@ TARGET_PROTEIN = int(env("TARGET_PROTEIN", "130"))
 TARGET_WATER_ML = int(env("TARGET_WATER_ML", "3000"))
 TARGET_STEPS = int(env("TARGET_STEPS", "8000"))
 
-MEAL_GAP_HOURS = 3.5
-MEAL_REMIND_START = (8, 0)   # no meal reminders before this
-MEAL_REMIND_END = (21, 30)   # ...or after this (night summary owns the evening)
-MORNING = (8, 30)            # morning kick-off
-MORNING_CUTOFF_HOUR = 12     # if the bot was down, don't send "good morning" after noon
-NAG_HOUR = 13                # nothing logged by now -> nag
-WRAP = (22, 0)               # night summary
+DRAFT_TTL_HOURS = 6          # an unconfirmed draft meal expires after this long
 DAY_ROLLOVER_HOUR = 4        # food eaten before 4am counts toward the previous day
 

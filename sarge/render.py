@@ -1,16 +1,12 @@
 """Deterministic Telegram HTML: every number the user sees is computed here, not by Claude.
 
 Layout rule: summary first (what was logged, what's left), details after. Plain words over
-symbols; only calories and protein are shown (carbs/fat are stored, never displayed).
+symbols. Every function takes the day's goals `g` explicitly.
 """
 
 from html import escape
 
-from .config import TARGET_KCAL, TARGET_PROTEIN, TARGET_STEPS, TARGET_WATER_ML
-from .plan import SLOTS
-
-SLOT_LABELS = {**{k: s["label"] for k, s in SLOTS.items()}, "extra": "Extra"}
-SLOT_NEXT = {k: s["next"] for k, s in SLOTS.items()}
+from .goals import describe
 
 
 def fmt(n: float) -> str:
@@ -22,81 +18,88 @@ def bar(value: float, target: float, width: int = 10) -> str:
     return "▰" * filled + "▱" * (width - filled)
 
 
-def left_line(t: dict) -> str:
-    kcal_left = TARGET_KCAL - t["kcal"]
-    protein_left = TARGET_PROTEIN - t["protein"]
+def left_line(t: dict, g: dict) -> str:
+    kcal_left = g["kcal"] - t["kcal"]
+    protein_left = g["protein"] - t["protein"]
     kcal = f"{fmt(kcal_left)} cal" if kcal_left >= 0 else f"⚠️ {fmt(-kcal_left)} cal OVER"
     protein = f"{fmt(protein_left)}g protein" if protein_left > 0 else "protein done ✅"
     return f"Left today: {kcal} · {protein}"
 
 
+def macro_line(x: dict) -> str:
+    return f"{fmt(x['kcal'])} cal · {fmt(x['protein'])}g P · {fmt(x['carbs'])}g C · {fmt(x['fat'])}g F"
+
+
 def item_line(i: dict) -> str:
-    return f"{i.get('emoji') or '•'} {escape(i['name'])} · {fmt(i['kcal'])} cal · 💪{fmt(i['protein'])}g"
+    name = ("~" if i.get("estimated") else "") + escape(i["name"])
+    return f"{escape(i.get('emoji') or '•')} {name} · {fmt(i['kcal'])} cal · 💪{fmt(i['protein'])}g"
 
 
-def bars(t: dict) -> str:
+def bars(t: dict, g: dict) -> str:
     return (
-        f"🔥 {bar(t['kcal'], TARGET_KCAL)} {fmt(t['kcal'])} / {fmt(TARGET_KCAL)} cal\n"
-        f"💪 {bar(t['protein'], TARGET_PROTEIN)} {fmt(t['protein'])} / {TARGET_PROTEIN}g protein"
+        f"🔥 {bar(t['kcal'], g['kcal'])} {fmt(t['kcal'])} / {fmt(g['kcal'])} cal\n"
+        f"💪 {bar(t['protein'], g['protein'])} {fmt(t['protein'])} / {fmt(g['protein'])}g protein"
     )
 
 
-def missing_slots(t: dict) -> list[str]:
-    return [s for s in SLOTS if s not in t["slots"]]
-
-
-def next_line(t: dict) -> str:
-    missing = missing_slots(t)
-    return f"⏭ Next: {escape(SLOT_NEXT[missing[0]])}" if missing else "⏭ Plan meals done. Only lean protein if you're short."
-
-
-def extras_line(t: dict) -> str:
-    water = f"💧 {t['water_ml'] / 1000:.1f} / {TARGET_WATER_ML / 1000:.0f}L water"
+def extras_line(t: dict, g: dict) -> str:
+    water = f"💧 {t['water_ml'] / 1000:.1f} / {g['water_ml'] / 1000:g}L water"
     steps = f"👟 {fmt(t['steps'])} steps" if t["steps"] is not None else "👟 no steps logged"
     vitd = "💊 Vit D taken" if t["vitd"] else "💊 Vit D not yet"
     return f"{water} · {steps} · {vitd}"
 
 
-def meal_reply(title: str, items: list[dict], t: dict, comment: str) -> str:
-    kcal = sum(i["kcal"] for i in items)
-    protein = sum(i["protein"] for i in items)
+def _sum(items: list[dict]) -> dict:
+    return {k: sum(i.get(k) or 0 for i in items) for k in ("kcal", "protein", "carbs", "fat")}
+
+
+def meal_reply(title: str, items: list[dict], t: dict, g: dict, comment: str) -> str:
     parts = [
-        f"✅ <b>Logged {escape(title)}: {fmt(kcal)} cal · {fmt(protein)}g protein</b>\n{left_line(t)}",
+        f"✅ <b>Logged {escape(title)}: {macro_line(_sum(items))}</b>\n{left_line(t, g)}",
         "\n".join(item_line(i) for i in items),
-        bars(t),
+        bars(t, g),
     ]
     if comment:
         parts.append(f"🗣 {escape(comment)}")
-    parts.append(next_line(t))
     return "\n\n".join(parts)
 
 
-def photo_reply(kind: str, items: list[dict], picks: list[dict], t: dict, comment: str) -> str:
-    """Photo answers. Nothing here is logged; the numbers are Claude's estimate."""
-    parts = []
-    if kind == "plate" and items:
-        kcal = sum(i["kcal"] for i in items)
-        protein = sum(i["protein"] for i in items)
-        after = {**t, "kcal": t["kcal"] + kcal, "protein": t["protein"] + protein}
-        parts += [
-            f"📸 <b>Estimate: {fmt(kcal)} cal · {fmt(protein)}g protein</b> (not logged)\n"
-            f"If you eat it → {left_line(after)}",
-            "\n".join(item_line(i) for i in items),
-        ]
-    elif kind == "menu" and picks:
-        lines = [
-            f"{p.get('emoji') or '•'} {escape(p['name'])} · ~{fmt(p['kcal'])} cal · 💪{fmt(p['protein'])}g\n   ↳ {escape(p['how'])}"
-            for p in picks
-        ]
-        parts += [f"🍽 <b>Best picks for what's left</b>\n{left_line(t)}", "\n".join(lines)]
+def draft_reply(title: str, items: list[dict], comment: str) -> str:
+    """The pending meal: every draft item, so he sees exactly what "ate it" will log."""
+    parts = [
+        f"📝 <b>Draft {escape(title)}: {macro_line(_sum(items))}</b>\n" + "\n".join(item_line(i) for i in items),
+        'Say "ate it" to log it, or correct me first.',
+    ]
     if comment:
         parts.append(f"🗣 {escape(comment)}")
-    if kind == "plate" and items:
-        parts.append("Reply \"ate it\" to log it, or correct me first.")
-    return "\n\n".join(parts) or "Couldn't make that out. Send a clearer photo."
+    return "\n\n".join(parts)
 
 
-def other_reply(changes: list[str], t: dict, comment: str, show_status: bool) -> str:
+def picks_block(picks: list[dict], t: dict, g: dict) -> str:
+    """Menu photo: the best orders for what's left. Numbers are Claude's estimates, so marked ~."""
+    lines = [
+        f"{escape(p.get('emoji') or '•')} {escape(p['name'])} · ~{fmt(p['kcal'])} cal · 💪{fmt(p['protein'])}g\n   ↳ {escape(p['how'])}"
+        for p in picks
+    ]
+    return f"🍽 <b>Best picks for what's left</b>\n{left_line(t, g)}\n\n" + "\n".join(lines)
+
+
+def food_label(f: dict) -> str:
+    """Brand + name, e.g. 'Acme protein tortilla'. Escaped."""
+    brand = f.get("brand") or ""
+    return escape(" ".join(x for x in (brand[:1].upper() + brand[1:], f["name"]) if x))
+
+
+def food_saved_line(f: dict, updated: bool) -> str:
+    return (f"📌 {'Updated' if updated else 'Saved'} {food_label(f)} ({escape(f['serving_desc'])}): "
+            f"{fmt(f.get('kcal') or 0)} cal · {fmt(f.get('protein') or 0)}g P")
+
+
+def goals_line(g: dict) -> str:
+    return f"🎯 New goals: {describe(g)}"
+
+
+def other_reply(changes: list[str], t: dict, g: dict, comment: str, show_status: bool) -> str:
     """Replies with no new food. Chat stays chat: stats only when he asks for them."""
     parts = []
     if changes:
@@ -104,45 +107,38 @@ def other_reply(changes: list[str], t: dict, comment: str, show_status: bool) ->
     if comment:
         parts.append(escape(comment))
     if show_status:
-        parts.append(f"{left_line(t)}\n\n{bars(t)}\n\n{next_line(t)}")
+        parts.append(f"{left_line(t, g)}\n\n{bars(t, g)}")
     return "\n\n".join(parts) or "Talk to me when you've eaten something."
 
 
-def day_view(entries: list[dict], t: dict) -> str:
+def day_view(entries: list[dict], t: dict, g: dict) -> str:
     lines = []
     for e in entries:
-        kcal = sum(i["kcal"] for i in e["items"])
-        protein = sum(i["protein"] for i in e["items"])
-        title = e.get("title") or SLOT_LABELS.get(e["slot"], "Extra")
-        lines.append(f"{e['ts'][11:16]}  {escape(title)} · {fmt(kcal)} cal · 💪{fmt(protein)}g")
+        x = _sum(e["items"])
+        title = e.get("title") or e["slot"].capitalize()
+        lines.append(f"{e['ts'][11:16]}  {escape(title)} · {fmt(x['kcal'])} cal · 💪{fmt(x['protein'])}g")
     log = "\n".join(lines) or "Nothing logged yet."
-    return f"<b>Today</b>\n{left_line(t)}\n\n{log}\n\n{bars(t)}\n{extras_line(t)}\n\n{next_line(t)}"
+    return f"<b>Today</b>\n{left_line(t, g)}\n\n{log}\n\n{bars(t, g)}\n{extras_line(t, g)}"
 
 
-def meal_reminder(t: dict) -> str:
-    protein_left = max(TARGET_PROTEIN - t["protein"], 0)
-    return (
-        f"⏰ <b>3.5h since your last meal. Eat.</b>\n"
-        f"Still need {fmt(protein_left)}g protein · {fmt(max(TARGET_KCAL - t['kcal'], 0))} cal left\n\n"
-        f"{next_line(t)}"
-    )
-
-
-def nag() -> str:
-    return "⏰ <b>1pm and nothing logged.</b> Either you're starving or you're not reporting. Log it."
-
-
-def wrap_up(t: dict) -> str:
+def summary_fallback(t: dict, g: dict) -> str:
     problems = []
-    if t["protein"] < TARGET_PROTEIN - 10:
-        problems.append(f"💪 protein short by {fmt(TARGET_PROTEIN - t['protein'])}g")
-    if t["kcal"] > TARGET_KCAL + 100:
-        problems.append(f"🔥 {fmt(t['kcal'] - TARGET_KCAL)} cal over")
-    if t["water_ml"] < TARGET_WATER_ML:
-        problems.append(f"💧 water under {TARGET_WATER_ML / 1000:g}L" if t["water_ml"] else "💧 no water logged")
-    if t["steps"] is None or t["steps"] < TARGET_STEPS:
-        problems.append(f"👟 steps under {TARGET_STEPS / 1000:g}k" if t["steps"] is not None else "👟 no steps logged")
+    if t["protein"] < g["protein"] - 10:
+        problems.append(f"💪 protein short by {fmt(g['protein'] - t['protein'])}g")
+    if t["kcal"] > g["kcal"] + 100:
+        problems.append(f"🔥 {fmt(t['kcal'] - g['kcal'])} cal over")
+    if t["water_ml"] < g["water_ml"]:
+        problems.append(f"💧 water under {g['water_ml'] / 1000:g}L" if t["water_ml"] else "💧 no water logged")
+    if t["steps"] is None or t["steps"] < g["steps"]:
+        problems.append(f"👟 steps under {g['steps'] / 1000:g}k" if t["steps"] is not None else "👟 no steps logged")
     if not t["vitd"]:
         problems.append("💊 no vitamin D")
     verdict = "✅ Clean day. Do it again tomorrow." if not problems else "❌ " + "\n❌ ".join(problems)
-    return f"🌙 <b>Day wrap-up: {fmt(t['kcal'])} cal · {fmt(t['protein'])}g protein</b>\n\n{bars(t)}\n\n{verdict}"
+    return f"🌙 <b>Day wrap-up: {fmt(t['kcal'])} cal · {fmt(t['protein'])}g protein</b>\n\n{bars(t, g)}\n\n{verdict}"
+
+
+def summary_footer(t: dict, g: dict, streak: int) -> str:
+    out = f"🌙 <b>{macro_line(t)}</b>\n{bars(t, g)}\n{extras_line(t, g)}"
+    if streak:
+        out += f"\n🔥 Streak: {streak} day{'s' if streak != 1 else ''}"
+    return out

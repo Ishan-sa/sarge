@@ -1,33 +1,9 @@
-"""Your diet plan: what Claude reads, and the meal slots Sarge tracks and suggests next.
+"""Your diet plan, in words: the food context and food rules Claude reads (e.g. vegetarian, favourite meals).
 
-This is an example. Edit it, or keep your own plan in sarge/plan_local.py (gitignored) with the
-same two names, SLOTS and PLAN_TEXT, and it will be used instead.
-
-SLOTS: key -> label (shown in the log), next (shown as "⏭ Next: ..."), plan (what Claude is told).
+This is an example. Edit PLAN_TEXT, or keep your own plan in sarge/plan_local.py (gitignored) defining
+PLAN_TEXT, and it will be used instead. The goals stored in the bot (change them from chat) override any
+numbers in the plan text.
 """
-
-SLOTS = {
-    "breakfast": {
-        "label": "Breakfast",
-        "next": "Breakfast — Greek yogurt, berries, granola",
-        "plan": "Breakfast: 250g 0% Greek yogurt, 100g mixed berries, 30g granola",
-    },
-    "lunch": {
-        "label": "Lunch",
-        "next": "Lunch — chicken burrito bowl",
-        "plan": "Lunch: burrito bowl, 150g grilled chicken, 150g cooked rice, 80g black beans, salsa, lettuce",
-    },
-    "snack": {
-        "label": "Snack",
-        "next": "Snack — protein shake + a banana",
-        "plan": "Snack: 1 scoop whey in water, 1 banana",
-    },
-    "dinner": {
-        "label": "Dinner",
-        "next": "Dinner — salmon, potatoes, greens",
-        "plan": "Dinner: 150g salmon, 200g baby potatoes, 200g green veggies, 5g olive oil",
-    },
-}
 
 PLAN_TEXT = """\
 Diet plan — 1800 calories, 130g+ protein
@@ -46,6 +22,6 @@ Notes:
 """
 
 try:  # personal plan, never committed
-    from .plan_local import PLAN_TEXT, SLOTS  # type: ignore  # noqa: F401,F811
+    from .plan_local import PLAN_TEXT  # type: ignore  # noqa: F401,F811
 except ImportError:
     pass

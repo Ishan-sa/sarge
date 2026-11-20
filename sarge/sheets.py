@@ -8,8 +8,6 @@ from datetime import date
 
 import httpx
 
-from .config import TARGET_KCAL, TARGET_PROTEIN
-from .render import SLOT_LABELS
 from .store import Store
 
 log = logging.getLogger("sarge.sheets")
@@ -17,10 +15,11 @@ log = logging.getLogger("sarge.sheets")
 
 def snapshot(store: Store, day: date) -> dict:
     t = store.totals(day)
+    g = store.goals(day)
     items = [
         {
             "time": e["ts"][11:16],
-            "meal": e.get("title") or SLOT_LABELS.get(e["slot"], "Extra"),
+            "meal": e.get("title") or e["slot"].capitalize(),
             "name": i["name"],
             "grams": round(i["grams"]) if i["grams"] else None,
             **{k: round(i[k], 1) for k in ("kcal", "protein", "carbs", "fat")},
@@ -35,8 +34,8 @@ def snapshot(store: Store, day: date) -> dict:
             "water_l": round(t["water_ml"] / 1000, 2),
             "steps": int(t["steps"]) if t["steps"] is not None else "",
             "vitd": t["vitd"],
-            "kcal_ok": t["kcal"] <= TARGET_KCAL,
-            "protein_ok": t["protein"] >= TARGET_PROTEIN,
+            "kcal_ok": t["kcal"] <= g["kcal"],
+            "protein_ok": t["protein"] >= g["protein"],
         },
         "items": items,
     }
